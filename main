@@ -1,0 +1,277 @@
+from playwright.sync_api import sync_playwright
+import Ecommerce, csv
+
+# ------------------ Browser Initialization ------------------
+from playwright.sync_api import sync_playwright
+
+def initialize_browser():
+    playwright = sync_playwright().start()
+
+    # ✅ Pass the args *inside* launch()
+    browser = playwright.chromium.launch(
+        headless=False,
+        args=["--start-maximized"]
+    )
+
+    # ✅ Disable viewport resizing to keep it maximized
+    context = browser.new_context(no_viewport=True)
+
+    # ✅ Create page from context (not browser)
+    page = context.new_page()
+
+    return playwright, browser, page
+
+
+base_url = "https://automationexercise.com/"
+
+# ------------------ Test Cases ------------------
+
+def test_Register_User_and_deletion(page):
+    page.goto(base_url, wait_until="networkidle")
+    
+    page.click("//a[normalize-space()='Signup / Login']")
+    page.fill("//input[@data-qa='signup-name']", "roja")
+    page.fill("//input[@data-qa='signup-email']", "roja@example.com")
+    page.click("//button[@data-qa='signup-button']")
+    page.wait_for_timeout(2000)
+    print("Registration form loaded successfully.")
+   # page.wait_until_load_state("networkidle")
+    page.wait_for_selector("h2:has-text('Enter Account Information')", timeout=5000)
+    assert "Enter Account Information" in page.content(), "Registration form did not load as expected"
+    print("Registration form verified successfully.")
+    # Additional form filling steps can be added here
+    page.wait_for_timeout(2000)
+    page.check("#id_gender1")
+    page.fill("//input[@id='password']", "Test@1234")
+    page.select_option("//select[@id='days']", label="10")
+    page.select_option("//select[@id='months']", label="May")
+    page.select_option("//select[@id='years']", label="1995")
+    page.wait_for_timeout(2000)
+    page.check("//input[@id='newsletter']")
+    page.check("//input[@id='optin']")
+    page.fill("//input[@id='first_name']", "Test")
+    page.fill("//input[@id='last_name']", "User")
+    page.fill("//input[@id='company']", "TestCompany")
+    page.fill("//input[@id='address1']", "123 Test St")
+    page.fill("//input[@id='address2']", "Suite 100")
+    page.select_option("//select[@id='country']", label="India")
+    page.fill("//input[@id='state']", "TestState")
+    page.fill("//input[@id='city']", "TestCity")
+    page.fill("//input[@id='zipcode']", "123456")
+    page.fill("//input[@id='mobile_number']", "1234567890")
+    page.click("//button[normalize-space()='Create Account']")
+    page.wait_for_timeout(3000)
+    page.wait_for_selector("h2:has-text('Account Created!')", timeout=5000)
+    assert "Account Created!" in page.content(), "Account creation failed"
+    print("Account created successfully.")
+
+    # Account deletion
+    
+    page.click("//a[normalize-space()='Continue']")
+    page.wait_for_timeout(2000)
+    page.click("//a[normalize-space()='Delete Account']")
+    page.wait_for_timeout(2000) 
+    page.wait_for_selector("h2:has-text('Account Deleted!')", timeout=5000)
+    assert "Account Deleted!" in page.content(), "Account deletion failed"
+    print("Account deleted successfully.")
+
+
+def test_LoginCheck(page):
+    page.goto(base_url)
+    page.click("//a[normalize-space()='Signup / Login']")
+    page.fill("//input[@data-qa='login-email']", "roja@example.com")
+    page.fill("//input[@data-qa='login-password']", "Test@1234")
+    page.click("//button[@data-qa='login-button']")
+    page.wait_for_timeout(2000)
+    assert "Logged in as" in page.content(), "Login failed"
+    print("Login successful.")
+    
+
+def test_Logout(page):
+    page.goto(base_url)
+    page.click("//a[normalize-space()='Logout']")
+    page.wait_for_timeout(2000)
+    assert "Login to your account" in page.content(), "Logout failed"
+    print("Logout successful.")
+
+def test_user_with_exisiting_account(page):
+    page.goto(base_url)
+    page.click("//a[normalize-space()='Signup / Login']")
+    page.fill("//input[@data-qa='signup-name']", "roja")
+    page.fill("//input[@data-qa='signup-email']", "roja@example.com")
+    page.click("//button[@data-qa='signup-button']")
+    page.wait_for_timeout(2000)
+    assert "Email Address already exist!" in page.content(), "Existing account check failed"
+    print("Existing account check successful.")
+    
+def test_Contactform(page):
+    page.goto(base_url)
+    page.wait_for_timeout(2000)
+    page.click("//a[normalize-space()='Contact us']")
+    page.fill("//input[@data-qa='name']", "roja")
+    page.fill("//input[@data-qa='email']", "roja@mail.com")
+    page.fill("//input[@data-qa='subject']", "Test Subject")
+    page.fill("//textarea[@data-qa='message']", "This is a test message.")
+    page.click("//input[@name='upload_file']")
+    page.wait_for_timeout(2000)
+    page.set_input_files("//input[@name='upload_file']", "C:/Users/ACER/Downloads/sample.png")
+    page.click("//input[@data-qa='submit-button']")     
+    page.wait_for_timeout(2000)
+    assert "Success! Your details have been submitted successfully." in page.content(), "Contact form submission failed"
+    print("Contact form submitted successfully.")   
+
+
+def test_product_page_and_detail_page(page):
+    page.goto(base_url)
+    page.wait_for_timeout(2000)
+    page.click("//a[@href='/products']")
+    page.wait_for_timeout(2000)
+    assert "All Products" in page.content(), "Products page not loaded"
+    print("Products page loaded successfully.")
+    page.click("(//a[normalize-space()='View Product'])[1]")
+    page.wait_for_timeout(2000)
+    assert "Product Details" in page.content(), "Product details page not loaded"
+    print("Product details page loaded successfully.")
+    page.wait_for_selector("//h2[normalize-space()='Blue Top']", timeout=5000)
+    h2_text = page.text_content("//h2[normalize-space()='Blue Top']")
+    print(h2_text)
+    assert h2_text == "Blue Top", "Incorrect product details displayed"
+    print("Correct product details displayed successfully.")
+    page.wait_for_selector("//p[normalize-space()='Category: Women > Tops']", timeout=5000)
+    p_text = page.text_content("//p[normalize-space()='Category: Women > Tops']")
+    print(p_text)
+    assert p_text == "Category: Women > Tops", "Incorrect category displayed"   
+    print("Correct category displayed successfully.")   
+
+    page.wait_for_selector("//div[@class='product-details']//p[2]", timeout=5000)
+    description_text = page.text_content("//div[@class='product-details']//p[2]")
+    print( description_text)
+
+    page.wait_for_selector("//body//section//p[3]", timeout=5000)
+    condition_text = page.text_content("//body//section//p[3]")
+    print("Price:", condition_text)
+    
+   
+    page.wait_for_selector("//body//section//p[4]", timeout=5000)
+    brand_text = page.text_content("//body//section//p[4]") 
+
+    print("Brand:", brand_text)
+
+def test_product_search(page):
+    page.goto(base_url)
+    page.wait_for_timeout(2000)
+    page.click("//a[@href='/products']")
+    page.wait_for_selector("text=All Products", timeout=10000)
+    print(" Products page loaded successfully.")
+    page.fill("//input[@id='search_product']", "Winter Top")
+    page.click("//button[@id='submit_search']")
+    page.wait_for_timeout(2000)
+    assert "Searched Products" in page.content(), "Search results page not loaded"
+    print("Search results page loaded successfully.")
+    products = page.locator("//div[@class='productinfo text-center']")
+    count = products.count()
+    print(f"Number of products found: {count}")
+    for i in range(count):
+        product_name = products.nth(i).text_content()
+        print(f"Product {i+1}: {product_name}")
+    assert count > 0, "No products found for the search term"
+    print("Products found for the search term successfully."    )
+
+
+# ------------------ Utility Function ------------------
+def get_emails():
+    # ✅ Use raw string (r"") or double backslashes for Windows paths
+    with open(r"C:\Users\ACER\Desktop\email.csv", newline='') as f:
+        reader = csv.reader(f)
+        return [row[0].strip() for row in reader if row]
+
+
+
+# ------------------ Positive Test ------------------
+def test_newsletter_subscription(page):
+    emails = get_emails()
+    for email in emails:
+        page.goto(base_url)
+        page.wait_for_timeout(2000)
+
+        page.fill("//input[@id='susbscribe_email']", email)
+        page.click("//button[@id='subscribe']")
+        page.wait_for_timeout(2000)
+
+        # ✅ Assertion for success
+        assert "You have been successfully subscribed!" in page.content(), \
+            f"Newsletter subscription failed for: {email}"
+        print(f"✅ Newsletter subscription successful for: {email}")
+
+    #negative case
+def test_newsletter_subscription_negative(page):
+    page.goto(base_url)
+    page.wait_for_timeout(2000)
+
+    # Enter invalid email
+    page.fill("//input[@id='susbscribe_email']", "invalidemail")
+    page.click("//button[@id='subscribe']")
+    page.wait_for_timeout(2000)
+
+    # ✅ Get browser's validation message
+    validation_message = page.eval_on_selector(
+        "input[type='email']",
+        "el => el.validationMessage"
+    )
+
+    assert validation_message != "", "❌ No validation message for invalid email!"
+    print(f"✅ Negative test passed — validation message shown: {validation_message}")
+
+
+
+    
+    
+
+      
+    
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------ Main Execution ------------------
+
+if __name__ == "__main__":
+    playwright, browser, page = initialize_browser()
+
+    # ------------------ SELECT TESTS HERE ------------------
+    # Just add/remove function names to run the tests you want
+    tests_to_run = [
+        #test_Register_User_and_deletion
+       # test_LoginCheck,
+       # test_Logout
+       # test_user_with_exisiting_account
+        #test_Contactform
+       # test_product_page_and_detail_page
+       # test_product_search
+       
+        test_newsletter_subscription,
+        test_newsletter_subscription_negative
+
+        # lambda p: test_new_window(browser, p)  # for new window, pass browser too
+    ]
+
+    for test in tests_to_run:
+        test(page)
+
+    browser.close()
+    playwright.stop()
